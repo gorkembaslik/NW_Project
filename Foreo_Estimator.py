@@ -29,7 +29,7 @@ class EvaluationWorker(QThread):
     progress = pyqtSignal(str)
     error = pyqtSignal(str)
 
-    def __init__(self, channel_url, api_key='AIzaSyBiSugmzbENy_cAVexEYAM5kYylMcv6ZvA'):
+    def __init__(self, channel_url, api_key=''):
         super().__init__()
         self.channel_url = channel_url
         self.api_key = api_key
