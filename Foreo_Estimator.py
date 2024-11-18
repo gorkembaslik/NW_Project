@@ -29,10 +29,12 @@ class EvaluationWorker(QThread):
     progress = pyqtSignal(str)
     error = pyqtSignal(str)
 
-    def __init__(self, channel_url, api_key=''):
+    def __init__(self, channel_url, api_key='', months=6, max_videos=15):
         super().__init__()
         self.channel_url = channel_url
         self.api_key = api_key
+        self.months = months
+        self.max_videos = max_videos
         self.youtube = build('youtube', 'v3', developerKey=self.api_key)
         self.setup_nltk()
         self.load_models()
@@ -59,12 +61,14 @@ class EvaluationWorker(QThread):
             channel_id = self.extract_channel_id(self.channel_url)
             channel_name = self.get_channel_name(channel_id)
             self.progress.emit("Evaluating channel...")
-            overall_sponsored_score, overall_unsponsored_score, num_sponsored, num_unsponsored = self.evaluate_channel(channel_id)
+            avg_sponsored_sentiment, avg_unsponsored_sentiment, avg_sponsored_engagement_score, avg_unsponsored_engagement_score, num_sponsored, num_unsponsored = self.evaluate_channel(channel_id)
             results = {
                 'channel_name': channel_name,
                 'channel_id': channel_id,
-                'sponsored_score': overall_sponsored_score,
-                'unsponsored_score': overall_unsponsored_score,
+                'sponsored_sentiment': avg_sponsored_sentiment,
+                'unsponsored_sentiment': avg_unsponsored_sentiment,
+                'sponsored_engagement': avg_sponsored_engagement_score,
+                'unsponsored_engagement': avg_unsponsored_engagement_score,
                 'num_sponsored': num_sponsored,
                 'num_unsponsored': num_unsponsored
             }
@@ -72,18 +76,18 @@ class EvaluationWorker(QThread):
         except Exception as e:
             self.error.emit(str(e))
 
-    def get_channel_videos(self, channel_id, max_videos=15):
+    def get_channel_videos(self, channel_id):
         self.progress.emit("Fetching channel videos...")
         videos = []
         next_page_token = None
         base_video_url = "https://www.youtube.com/watch?v="
-        x_months_ago = datetime.now() - timedelta(days=4*30)
-        
-        while len(videos) < max_videos:
+        x_months_ago = datetime.now() - timedelta(days=self.months * 30)
+
+        while len(videos) < self.max_videos:
             request = self.youtube.search().list(
                 part='snippet',
                 channelId=channel_id,
-                maxResults=min(10, max_videos - len(videos)),
+                maxResults=min(10, self.max_videos - len(videos)),
                 type='video',
                 order='date',
                 pageToken=next_page_token
@@ -259,10 +263,10 @@ class EvaluationWorker(QThread):
         avg_sponsored_engagement_score = (sponsored_engagement_metrics['likes'] + sponsored_engagement_metrics['comments']) / (sponsored_engagement_metrics['views'] or 1)
         avg_unsponsored_engagement_score = (unsponsored_engagement_metrics['likes'] + unsponsored_engagement_metrics['comments']) / (unsponsored_engagement_metrics['views'] or 1)
 
-        overall_sponsored_score = (0.5 * avg_sponsored_sentiment) + (0.5 * avg_sponsored_engagement_score)
-        overall_unsponsored_score = (0.5 * avg_unsponsored_sentiment) + (0.5 * avg_unsponsored_engagement_score)
+        #overall_sponsored_score = (0.5 * avg_sponsored_sentiment) + (0.5 * avg_sponsored_engagement_score)
+        #overall_unsponsored_score = (0.5 * avg_unsponsored_sentiment) + (0.5 * avg_unsponsored_engagement_score)
 
-        return overall_sponsored_score, overall_unsponsored_score, num_sponsored, num_unsponsored
+        return avg_sponsored_sentiment, avg_unsponsored_sentiment, avg_sponsored_engagement_score, avg_unsponsored_engagement_score, num_sponsored, num_unsponsored
   
 
 class ModernFrame(QFrame):
@@ -320,25 +324,33 @@ class YouTubePartnerEstimator(QMainWindow):
         """Setup the header section with title and subtitle"""
         header_frame = ModernFrame()
         header_layout = QVBoxLayout(header_frame)
-        
+
         title_label = self.create_label("YouTube Partner Estimator", self._get_title_style())
         subtitle_label = self.create_label("Analyze YouTube channels for partnership potential", self._get_subtitle_style())
-        
+
         header_layout.addWidget(title_label)
         header_layout.addWidget(subtitle_label)
         self.main_layout.addWidget(header_frame)
 
     def setup_input_section(self):
-        """Setup the input section with URL input and evaluate button"""
+        """Setup the input section with URL input, months input, max videos input, and evaluate button"""
         input_frame = ModernFrame()
         input_layout = QHBoxLayout(input_frame)
-        
+
         self.url_input = QLineEdit()
         self.url_input.setPlaceholderText("Enter YouTube Channel URL")
-        
+
+        self.months_input = QLineEdit()
+        self.months_input.setPlaceholderText("Number of months (e.g., 6)")
+
+        self.max_videos_input = QLineEdit()
+        self.max_videos_input.setPlaceholderText("Maximum number of videos (e.g., 20)")
+
         self.evaluate_button = self.create_evaluate_button()
-        
+
         input_layout.addWidget(self.url_input)
+        input_layout.addWidget(self.months_input)
+        input_layout.addWidget(self.max_videos_input)
         input_layout.addWidget(self.evaluate_button)
         self.main_layout.addWidget(input_frame)
 
@@ -346,7 +358,7 @@ class YouTubePartnerEstimator(QMainWindow):
         """Setup the results section with the table"""
         results_frame = ModernFrame()
         results_layout = QVBoxLayout(results_frame)
-        
+
         self.results_table = self.create_results_table()
         results_layout.addWidget(self.results_table)
         self.main_layout.addWidget(results_frame)
@@ -355,7 +367,7 @@ class YouTubePartnerEstimator(QMainWindow):
         """Setup the recommendation section"""
         recommendation_frame = ModernFrame()
         recommendation_layout = QVBoxLayout(recommendation_frame)
-        
+
         self.recommendation_label = self.create_label("", self._get_recommendation_base_style())
         recommendation_layout.addWidget(self.recommendation_label)
         self.main_layout.addWidget(recommendation_frame)
@@ -396,21 +408,42 @@ class YouTubePartnerEstimator(QMainWindow):
         """Start the channel evaluation process"""
         if not self._validate_input():
             return
-        
+
         self._setup_evaluation()
         self._show_progress_dialog()
 
     def _validate_input(self):
-        """Validate the channel URL input"""
+        """Validate the channel URL, months, and max videos input"""
         if not self.url_input.text():
             self.show_error_message("Please enter a YouTube channel URL")
             return False
+
+        try:
+            months = int(self.months_input.text())
+            if months <= 0:
+                self.show_error_message("Please enter a positive number of months")
+                return False
+        except ValueError:
+            self.show_error_message("Invalid number of months")
+            return False
+
+        try:
+            max_videos = int(self.max_videos_input.text())
+            if max_videos <= 0:
+                self.show_error_message("Please enter a positive number of maximum videos")
+                return False
+        except ValueError:
+            self.show_error_message("Invalid maximum number of videos")
+            return False
+
         return True
 
     def _setup_evaluation(self):
         """Setup the evaluation worker and connections"""
         self.evaluate_button.setEnabled(False)
-        self.worker = EvaluationWorker(self.url_input.text())
+        months = int(self.months_input.text())
+        max_videos = int(self.max_videos_input.text())
+        self.worker = EvaluationWorker(self.url_input.text(), months=months, max_videos=max_videos)
         self._connect_worker_signals()
         self.worker.start()
 
@@ -433,8 +466,10 @@ class YouTubePartnerEstimator(QMainWindow):
         metrics = [
             ('Channel Name', results['channel_name']),
             ('Channel ID', results['channel_id']),
-            ('Sponsored Content Score', f"{results['sponsored_score']:.4f}"),
-            ('Organic Content Score', f"{results['unsponsored_score']:.4f}"),
+            ('Sponsored Content Sentiment', f"{results['sponsored_sentiment']:.4f}"),
+            ('Organic Content Sentiment', f"{results['unsponsored_sentiment']:.4f}"),
+            ('Sponsored Content Engagement Rate', f"{results['sponsored_engagement']:.4f}"),
+            ('Organic Content Engagement Rate', f"{results['unsponsored_engagement']:.4f}"),
             ('Sponsored Videos Analyzed', str(results['num_sponsored'])),
             ('Organic Videos Analyzed', str(results['num_unsponsored']))
         ]
@@ -446,7 +481,7 @@ class YouTubePartnerEstimator(QMainWindow):
 
     def update_recommendation(self, results):
         """Update the recommendation based on analysis results"""
-        is_sponsored = results['sponsored_score'] > results['unsponsored_score']
+        is_sponsored = results['sponsored_sentiment'] >= results['unsponsored_sentiment'] and results['sponsored_engagement'] >= results['unsponsored_engagement']
         text, style = self._get_recommendation_content(is_sponsored)
         self.recommendation_label.setText(text)
         self.recommendation_label.setStyleSheet(self._get_recommendation_base_style() + style)
