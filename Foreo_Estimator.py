@@ -14,22 +14,170 @@ import joblib
 import os
 import re
 import numpy as np
-
 import nltk
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-from nltk.stem import WordNetLemmatizer
-
+from nltk.sentiment import SentimentIntensityAnalyzer
+from textblob import TextBlob
 import requests
 from datetime import datetime, timedelta
-#from sklearn.feature_extraction.text import TfidfVectorizer 
+
+import emoji
+import unicodedata
+from nltk.corpus import stopwords
+from langdetect import detect, LangDetectException
+import isodate
+
+class EnhancedSentimentAnalyzer:
+    def __init__(self):
+        # Download necessary NLTK resources
+        nltk.download('vader_lexicon', quiet=True)
+        nltk.download('punkt', quiet=True)
+        nltk.download('stopwords', quiet=True)
+        
+        # Initialize VADER sentiment analyzer
+        self.vader_analyzer = SentimentIntensityAnalyzer()
+        
+        # Prepare a set of short, uninformative phrases
+        self.short_phrases = {
+            'good', 'nice', 'great', 'awesome', 'wow', 'cool', 'amazing', 
+            'helpful', 'excellent', 'superb', 'wonderful', 'fantastic', 
+            'very helpful', 'really good', 'really nice', 'really helpful',
+            'very nice', 'very good', 'very impressive', 'really impressive'
+        }
+        
+        # Prepare English stopwords
+        self.stop_words = set(stopwords.words('english'))
+
+    def remove_emojis_and_symbols(self, text):
+        """
+        Remove emojis, symbols, and pictographs
+        Uses the emoji library to comprehensively remove emojis
+        """
+        # Remove emojis
+        text = emoji.replace_emoji(text, replace='')
+        
+        # Remove transport and map symbols and other special symbols
+        text = re.sub(r'[\U0001F300-\U0001F5FF\U0001F900-\U0001F9FF\U0001F600-\U0001F64F\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF]', '', text)
+        
+        return text
+    
+    def normalize_text(self, text):
+        """
+        Comprehensive text normalization
+        1. Convert to lowercase
+        2. Remove emojis and symbols
+        3. Remove punctuation and digits
+        4. Remove extra whitespaces
+        """
+        # Convert to lowercase
+        text = text.lower()
+        
+        # Remove emojis and symbols
+        text = self.remove_emojis_and_symbols(text)
+        
+        # Remove punctuation and digits
+        text = re.sub(r'[^\w\s]', '', text)
+        text = re.sub(r'\d+', '', text)
+        
+        # Remove extra whitespaces
+        text = ' '.join(text.split())
+        
+        return text
+    
+    def filter_comment(self, comment):
+        """
+        Comprehensive comment filtering process
+        """
+        try:
+            # Normalize text
+            normalized_text = self.normalize_text(comment)
+            
+            # Detect language
+            try:
+                language = detect(normalized_text)
+                if language != 'en':
+                    return None
+            except LangDetectException:
+                # If language detection fails, we'll skip the comment
+                return None
+            
+            # Remove stop words
+            words = normalized_text.split()
+            words = [word for word in words if word not in self.stop_words]
+            
+            # Check comment length and against short phrases
+            filtered_text = ' '.join(words)
+            
+            # Remove very short comments or known uninformative phrases
+            if (len(filtered_text.split()) < 3 or 
+                filtered_text.strip() in self.short_phrases or 
+                len(filtered_text.strip()) < 10):
+                return None
+            
+            return filtered_text
+        
+        except Exception as e:
+            print(f"Error filtering comment: {e}")
+            return None
+        
+    def analyze_sentiment(self, comments):
+        """
+        Enhanced sentiment analysis with comprehensive filtering
+        """
+        if not comments:
+            return 0, {'positive': 0, 'neutral': 0, 'negative': 0}
+        
+        # Filter comments first
+        filtered_comments = [self.filter_comment(comment) for comment in comments]
+        filtered_comments = [comment for comment in filtered_comments if comment is not None]
+        
+        if not filtered_comments:
+            return 0, {'positive': 0, 'neutral': 0, 'negative': 0}
+        
+        sentiment_scores = []
+        sentiment_counts = {'positive': 0, 'neutral': 0, 'negative': 0}
+        
+        for comment in filtered_comments:
+            # VADER Sentiment Analysis
+            vader_scores = self.vader_analyzer.polarity_scores(comment)
+            vader_sentiment = vader_scores['compound']
+            
+            # TextBlob Sentiment Analysis
+            blob_sentiment = TextBlob(comment).sentiment.polarity
+            
+            # Weighted average of different sentiment methods
+            combined_sentiment = (
+                0.6 * vader_sentiment +  # VADER is known for social media text
+                0.4 * blob_sentiment     # TextBlob provides additional linguistic analysis
+            )
+            
+            # Categorize the sentiment
+            if combined_sentiment > 0.1:
+                sentiment_counts['positive'] += 1
+            elif combined_sentiment < -0.1:
+                sentiment_counts['negative'] += 1
+            else:
+                sentiment_counts['neutral'] += 1
+            
+            sentiment_scores.append(combined_sentiment)
+        
+        # If no valid comments after filtering
+        if not sentiment_scores:
+            return 0, sentiment_counts
+        
+        # Use median to reduce impact of extreme values
+        median_sentiment = np.median(sentiment_scores)
+        
+        # Normalize sentiment to 0-1 scale
+        normalized_sentiment = (median_sentiment + 1) / 2
+        
+        return normalized_sentiment, sentiment_counts
 
 class EvaluationWorker(QThread):
     finished = pyqtSignal(dict)
     progress = pyqtSignal(str)
     error = pyqtSignal(str)
 
-    def __init__(self, channel_url, api_key='', months=6, max_videos=15):
+    def __init__(self, channel_url, api_key='AIzaSyBiSugmzbENy_cAVexEYAM5kYylMcv6ZvA', months=6, max_videos=15):
         super().__init__()
         self.channel_url = channel_url
         self.api_key = api_key
@@ -37,31 +185,25 @@ class EvaluationWorker(QThread):
         self.max_videos = max_videos
         self.youtube = build('youtube', 'v3', developerKey=self.api_key)
         self.setup_nltk()
-        self.load_models()
+        self.sentiment_analyzer = EnhancedSentimentAnalyzer()
 
     def setup_nltk(self):
         nltk.download('punkt', quiet=True)
         nltk.download('stopwords', quiet=True)
-        nltk.download('wordnet', quiet=True)
-        self.lemmatizer = WordNetLemmatizer()
-
-    def load_models(self):
-        base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
-        vectorizer_path = os.path.join(base_path, 'models', 'tfidf_vectorizer.pkl')
-        model_path = os.path.join(base_path, 'models', 'sentiment_model.pkl')
-
-        try:
-            self.vectorizer = joblib.load(vectorizer_path)
-            self.model = joblib.load(model_path)
-        except Exception as e:
-            self.error.emit(f"Error loading models: {str(e)}")
+        nltk.download('vader_lexicon', quiet=True)
 
     def run(self):
         try:
             channel_id = self.extract_channel_id(self.channel_url)
             channel_name = self.get_channel_name(channel_id)
             self.progress.emit("Evaluating channel...")
-            avg_sponsored_sentiment, avg_unsponsored_sentiment, avg_sponsored_engagement_score, avg_unsponsored_engagement_score, num_sponsored, num_unsponsored = self.evaluate_channel(channel_id)
+            
+            # Unpack all returned values
+            (avg_sponsored_sentiment, avg_unsponsored_sentiment, 
+            avg_sponsored_engagement_score, avg_unsponsored_engagement_score, 
+            num_sponsored, num_unsponsored,
+            sponsored_sentiment_counts, unsponsored_sentiment_counts) = self.evaluate_channel(channel_id)
+            
             results = {
                 'channel_name': channel_name,
                 'channel_id': channel_id,
@@ -70,8 +212,11 @@ class EvaluationWorker(QThread):
                 'sponsored_engagement': avg_sponsored_engagement_score,
                 'unsponsored_engagement': avg_unsponsored_engagement_score,
                 'num_sponsored': num_sponsored,
-                'num_unsponsored': num_unsponsored
+                'num_unsponsored': num_unsponsored,
+                'sponsored_sentiment_counts': sponsored_sentiment_counts,
+                'unsponsored_sentiment_counts': unsponsored_sentiment_counts
             }
+            
             self.finished.emit(results)
         except Exception as e:
             self.error.emit(str(e))
@@ -117,6 +262,10 @@ class EvaluationWorker(QThread):
                         continue
 
                     duration = video_details['contentDetails']['duration']
+                    seconds = isodate.parse_duration(duration).total_seconds()
+
+                    if seconds <= 180:
+                        continue
 
                     if 'M' not in duration or (duration.startswith('PT') and 'S' in duration and 'M' not in duration):
                         continue
@@ -184,22 +333,8 @@ class EvaluationWorker(QThread):
         return
 
     def analyze_sentiment(self, comments):
-        comment_array = self.vectorizer.transform(comments)
-        sentiment_scores = self.model.predict(comment_array)
-        sentiment_mapping = {'positive': 1, 'negative': 0}
-        numeric_sentiment_scores = np.array([sentiment_mapping.get(score, 0) for score in sentiment_scores], dtype=np.float64)
-        return np.mean(numeric_sentiment_scores) if len(numeric_sentiment_scores) > 0 else 0
-
-    def clean_text(self, text):
-        text = text.lower()
-        text = re.sub(r'http\S+|www\S+', '', text)
-        text = re.sub(r'[^a-zA-Z\s]', '', text)
-        text = re.sub(r'\s+', ' ', text).strip()
-        tokens = word_tokenize(text)
-        tokens = [word for word in tokens if word not in stopwords.words('english')]
-        tokens = [self.lemmatizer.lemmatize(word) for word in tokens]
-        return ' '.join(tokens)
-
+        return self.sentiment_analyzer.analyze_sentiment(comments)
+    
     def get_channel_name(self, channel_id):
         request = self.youtube.channels().list(part='snippet', id=channel_id).execute()
         if request['items']:
@@ -229,6 +364,10 @@ class EvaluationWorker(QThread):
         unsponsored_engagement_metrics = {"likes": 0, "views": 0, "comments": 0, "count": 0}
         sponsored_videos = []
         unsponsored_videos = []
+        
+        # Initialize sentiment counts
+        sponsored_sentiment_counts = {'positive': 0, 'neutral': 0, 'negative': 0}
+        unsponsored_sentiment_counts = {'positive': 0, 'neutral': 0, 'negative': 0}
 
         for video in videos:
             self.progress.emit(f"Analyzing video: {video['video_title']}")
@@ -236,23 +375,30 @@ class EvaluationWorker(QThread):
             comments = self.get_video_comments(video_id)
             if comments is None:
                 continue
-            comments = [self.clean_text(comment) for comment in comments]
+            
             likes, views, comments_count = self.get_video_engagement_metrics(video_id)
+            sentiment_score, sentiment_counts = self.analyze_sentiment(comments)
 
             if self.check_sponsorship_disclaimer(video_id):
-                sponsored_sentiments.append(self.analyze_sentiment(comments))
+                sponsored_sentiments.append(sentiment_score)
                 sponsored_videos.append(video)
                 sponsored_engagement_metrics['likes'] += likes
                 sponsored_engagement_metrics['views'] += views
                 sponsored_engagement_metrics['comments'] += comments_count
                 sponsored_engagement_metrics['count'] += 1
+                # Add counts to sponsored totals
+                for key in sentiment_counts:
+                    sponsored_sentiment_counts[key] += sentiment_counts[key]
             else:
-                unsponsored_sentiments.append(self.analyze_sentiment(comments))
+                unsponsored_sentiments.append(sentiment_score)
                 unsponsored_videos.append(video)
                 unsponsored_engagement_metrics['likes'] += likes
                 unsponsored_engagement_metrics['views'] += views
                 unsponsored_engagement_metrics['comments'] += comments_count
                 unsponsored_engagement_metrics['count'] += 1
+                # Add counts to unsponsored totals
+                for key in sentiment_counts:
+                    unsponsored_sentiment_counts[key] += sentiment_counts[key]
 
         num_sponsored = len(sponsored_videos)
         num_unsponsored = len(unsponsored_videos)
@@ -263,10 +409,21 @@ class EvaluationWorker(QThread):
         avg_sponsored_engagement_score = (sponsored_engagement_metrics['likes'] + sponsored_engagement_metrics['comments']) / (sponsored_engagement_metrics['views'] or 1)
         avg_unsponsored_engagement_score = (unsponsored_engagement_metrics['likes'] + unsponsored_engagement_metrics['comments']) / (unsponsored_engagement_metrics['views'] or 1)
 
-        #overall_sponsored_score = (0.5 * avg_sponsored_sentiment) + (0.5 * avg_sponsored_engagement_score)
-        #overall_unsponsored_score = (0.5 * avg_unsponsored_sentiment) + (0.5 * avg_unsponsored_engagement_score)
+        results = {
+            'sponsored_sentiment': avg_sponsored_sentiment,
+            'unsponsored_sentiment': avg_unsponsored_sentiment,
+            'sponsored_engagement': avg_sponsored_engagement_score,
+            'unsponsored_engagement': avg_unsponsored_engagement_score,
+            'num_sponsored': num_sponsored,
+            'num_unsponsored': num_unsponsored,
+            'sponsored_sentiment_counts': sponsored_sentiment_counts,
+            'unsponsored_sentiment_counts': unsponsored_sentiment_counts
+        }
 
-        return avg_sponsored_sentiment, avg_unsponsored_sentiment, avg_sponsored_engagement_score, avg_unsponsored_engagement_score, num_sponsored, num_unsponsored
+        return (avg_sponsored_sentiment, avg_unsponsored_sentiment, 
+                avg_sponsored_engagement_score, avg_unsponsored_engagement_score, 
+                num_sponsored, num_unsponsored,
+                sponsored_sentiment_counts, unsponsored_sentiment_counts)
   
 
 class ModernFrame(QFrame):
@@ -471,7 +628,13 @@ class YouTubePartnerEstimator(QMainWindow):
             ('Sponsored Content Engagement Rate', f"{results['sponsored_engagement']:.4f}"),
             ('Organic Content Engagement Rate', f"{results['unsponsored_engagement']:.4f}"),
             ('Sponsored Videos Analyzed', str(results['num_sponsored'])),
-            ('Organic Videos Analyzed', str(results['num_unsponsored']))
+            ('Organic Videos Analyzed', str(results['num_unsponsored'])),
+            ('Sponsored Positive Comments', str(results.get('sponsored_sentiment_counts', {}).get('positive', 0))),
+            ('Sponsored Neutral Comments', str(results.get('sponsored_sentiment_counts', {}).get('neutral', 0))),
+            ('Sponsored Negative Comments', str(results.get('sponsored_sentiment_counts', {}).get('negative', 0))),
+            ('Organic Positive Comments', str(results.get('unsponsored_sentiment_counts', {}).get('positive', 0))),
+            ('Organic Neutral Comments', str(results.get('unsponsored_sentiment_counts', {}).get('neutral', 0))),
+            ('Organic Negative Comments', str(results.get('unsponsored_sentiment_counts', {}).get('negative', 0)))
         ]
 
         self.results_table.setRowCount(len(metrics))
