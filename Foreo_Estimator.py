@@ -3,7 +3,7 @@ import sys
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                                QLabel, QLineEdit, QPushButton, QTableWidget, 
                                QTableWidgetItem, QMessageBox, QProgressDialog,
-                               QFrame, QHBoxLayout, QHeaderView, QSizePolicy)  # Commented parts remain unchanged
+                               QFrame, QHBoxLayout, QHeaderView, QSizePolicy) 
 
 from PySide6.QtCore import Qt, QThread, Signal , QPropertyAnimation, Property
 
@@ -31,15 +31,13 @@ import translators as ts
 
 class EnhancedSentimentAnalyzer:
     def __init__(self):
-        # Download necessary NLTK resources
         nltk.download('vader_lexicon', quiet=True)
         nltk.download('punkt', quiet=True)
         nltk.download('stopwords', quiet=True)
         
-        # Initialize VADER sentiment analyzer
         self.vader_analyzer = SentimentIntensityAnalyzer()
         
-        # Prepare a set of short, uninformative phrases
+        # uninformative phrases
         self.short_phrases = {
             'good', 'nice', 'great', 'awesome', 'wow', 'cool', 'amazing', 
             'helpful', 'excellent', 'superb', 'wonderful', 'fantastic', 
@@ -51,11 +49,7 @@ class EnhancedSentimentAnalyzer:
         self.stop_words = set(stopwords.words('english'))
 
     def remove_emojis_and_symbols(self, text):
-        """
-        Remove emojis, symbols, and pictographs
-        Uses the emoji library to comprehensively remove emojis
-        """
-        # Remove emojis
+      
         text = emoji.replace_emoji(text, replace='')
         
         # Remove transport and map symbols and other special symbols
@@ -65,30 +59,20 @@ class EnhancedSentimentAnalyzer:
     
     def normalize_text(self, text):
 
-        # Convert to lowercase
-        text = text.lower()
-        
-        # Remove emojis and symbols
+        text = text.lower()        
         text = self.remove_emojis_and_symbols(text)
-        
-        # Remove punctuation and digits
         text = re.sub(r'[^\w\s]', '', text)
         text = re.sub(r'\d+', '', text)
         
-        # Remove extra whitespaces
         text = ' '.join(text.split())
         
         return text
     
     def filter_comment(self, comment):
-        """
-        Comprehensive comment filtering process
-        """
+       
         try:
-            # Normalize text
             normalized_text = self.normalize_text(comment)
             
-            # Detect language
             try:
                 language = detect(normalized_text)
                 if language != 'en':
@@ -98,17 +82,13 @@ class EnhancedSentimentAnalyzer:
                         print(f"Translation failed: {e}")
                         return None
             except LangDetectException:
-                # If language detection fails, we'll skip the comment
                 return None
             
-            # Remove stop words
             words = normalized_text.split()
             words = [word for word in words if word not in self.stop_words]
             
-            # Check comment length and against short phrases
             filtered_text = ' '.join(words)
             
-            # Remove very short comments or known uninformative phrases
             if (len(filtered_text.split()) < 3 or 
                 filtered_text.strip() in self.short_phrases or 
                 len(filtered_text.strip()) < 10):
@@ -121,13 +101,10 @@ class EnhancedSentimentAnalyzer:
             return None
         
     def analyze_sentiment(self, comments):
-        """
-        Enhanced sentiment analysis with comprehensive filtering
-        """
+    
         if not comments:
             return 0, {'positive': 0, 'neutral': 0, 'negative': 0}
         
-        # Filter comments
         filtered_comments = [self.filter_comment(comment) for comment in comments]
         filtered_comments = [comment for comment in filtered_comments if comment is not None]
         
@@ -138,11 +115,10 @@ class EnhancedSentimentAnalyzer:
         sentiment_counts = {'positive': 0, 'neutral': 0, 'negative': 0}
         
         for comment in filtered_comments:
-            # VADER Sentiment Analysis
+        
             vader_scores = self.vader_analyzer.polarity_scores(comment)
             vader_sentiment = vader_scores['compound']
             
-            # TextBlob Sentiment Analysis
             blob_sentiment = TextBlob(comment).sentiment.polarity
             
             # Weighted average of different sentiment methods
@@ -161,14 +137,11 @@ class EnhancedSentimentAnalyzer:
             
             sentiment_scores.append(combined_sentiment)
         
-        # If no valid comments after filtering
         if not sentiment_scores:
             return 0, sentiment_counts
         
-        # median to reduce impact of extreme values
         median_sentiment = np.median(sentiment_scores)
         
-        # Normalize sentiment to 0-1 scale
         normalized_sentiment = (median_sentiment + 1) / 2
         
         return normalized_sentiment, sentiment_counts
@@ -235,11 +208,9 @@ class EvaluationWorker(QThread):
                     video_title = item['snippet']['title']
                     video_url = f"{base_video_url}{video_id}"
 
-                    # Get the publish date
                     publish_date_str = video_details['snippet']['publishedAt']
                     publish_date = datetime.strptime(publish_date_str, "%Y-%m-%dT%H:%M:%SZ")
 
-                    # Filter videos based on the date (only include videos from the last 6 months)
                     if publish_date < x_months_ago:
                         continue
 
@@ -370,7 +341,7 @@ class EvaluationWorker(QThread):
                 sponsored_engagement_metrics['views'] += views
                 sponsored_engagement_metrics['comments'] += comments_count
                 sponsored_engagement_metrics['count'] += 1
-                # Add counts to sponsored totals
+
                 for key in sentiment_counts:
                     sponsored_sentiment_counts[key] += sentiment_counts[key]
             else:
@@ -380,7 +351,7 @@ class EvaluationWorker(QThread):
                 unsponsored_engagement_metrics['views'] += views
                 unsponsored_engagement_metrics['comments'] += comments_count
                 unsponsored_engagement_metrics['count'] += 1
-                # Add counts to unsponsored totals
+
                 for key in sentiment_counts:
                     unsponsored_sentiment_counts[key] += sentiment_counts[key]
 
@@ -432,7 +403,6 @@ class YouTubePartnerEstimator(QMainWindow):
         super().__init__()
         self.setWindowTitle("YouTube Partnership Analyzer")
         
-        # Set dynamic window size and minimum dimensions
         screen_geometry = QApplication.primaryScreen().geometry()
         self.resize(
             int(screen_geometry.width() * 0.7),
@@ -440,15 +410,12 @@ class YouTubePartnerEstimator(QMainWindow):
         )
         self.setMinimumSize(640, 480)
 
-        # Set window icon
         icon_path = self._get_icon_path()
         if icon_path:
             self.setWindowIcon(QIcon(icon_path))
 
-        # Apply global stylesheet
         self.setStyleSheet(ResponsiveStylesheet.get_dynamic_stylesheet())
 
-        # Setup UI Components
         self._setup_central_widget()
         self._create_header()
         self._create_input_section()
@@ -458,12 +425,12 @@ class YouTubePartnerEstimator(QMainWindow):
         
 
     def _get_icon_path(self):
-        """Handle icon path for bundled applications"""
+        
         logo_path = os.path.join(getattr(sys, '_MEIPASS', ''), 'Foreo_Logo.png')
         return logo_path if os.path.exists(logo_path) else None
 
     def _setup_central_widget(self):
-        """Setup responsive central widget and layout"""
+        
         central_widget = QWidget()
         main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(10, 10, 10, 10)
@@ -472,22 +439,18 @@ class YouTubePartnerEstimator(QMainWindow):
         self.main_layout = main_layout
 
     def _create_header(self):
-        """Create a responsive header with title and subtitle"""
+        
         title = QLabel("YouTube Partnership Analyzer")
         title.setFont(ScalableFont.get_responsive_font(20, QFont.Weight.Bold))
         title.setStyleSheet("color: #D47AB3;")
         title.setAlignment(Qt.AlignCenter)
 
-        #subtitle = QLabel("Comprehensive Channel Performance Analysis")
-        #subtitle.setFont(ScalableFont.get_responsive_font(16, QFont.Weight.Medium))
-        #subtitle.setStyleSheet("color: #7f8c8d;")
-        #subtitle.setAlignment(Qt.AlignCenter)
-
+        
         self.main_layout.addWidget(title)
-        #self.main_layout.addWidget(subtitle)
+        
 
     def _create_input_section(self):
-        """Create a responsive input section with flexible components"""
+        
         input_layout = QHBoxLayout()
         input_layout.setSpacing(10)
 
@@ -505,12 +468,12 @@ class YouTubePartnerEstimator(QMainWindow):
         self.main_layout.addLayout(input_layout)
 
     def _create_results_table(self):
-        """Create a responsive results table"""
+        
         self.results_table = QTableWidget()
         self.results_table.setColumnCount(3)
         self.results_table.setHorizontalHeaderLabels(['Metric', 'Sponsored', 'Organic'])
         
-        # Enable dynamic column resizing
+        
         header = self.results_table.horizontalHeader()
         header_font = QFont()
         header_font.setPointSize(13)  # Set font size
@@ -526,27 +489,14 @@ class YouTubePartnerEstimator(QMainWindow):
         self.main_layout.addWidget(self.results_table)
 
     def start_evaluation(self):
-        """Start the channel evaluation process
         if not self._validate_input():
             return
-
-        self._setup_evaluation()
-        self._show_progress_dialog()
-        self.evaluate_button.setEnabled(False)
-        """
-        if not self._validate_input():
-            return
-
-        # Animate the button to show it’s inactive
-        #self.evaluate_button_animation.setStartValue(1.0)
-        #self.evaluate_button_animation.setEndValue(0.5)  # Semi-transparent
-        #self.evaluate_button_animation.start()
 
         self._setup_evaluation()
         self._show_progress_dialog()
 
     def _validate_input(self):
-        """Validate the channel URL, months, and max videos input"""
+        
         if not self.url_input.text():
             self.show_error_message("Please enter a YouTube channel URL")
             return False
@@ -572,7 +522,7 @@ class YouTubePartnerEstimator(QMainWindow):
         return True
 
     def _setup_evaluation(self):
-        """Setup the evaluation worker and connections"""
+        
         self.evaluate_button.setEnabled(False)
         months = int(self.months_input.text())
         max_videos = int(self.max_videos_input.text())
@@ -581,13 +531,13 @@ class YouTubePartnerEstimator(QMainWindow):
         self.worker.start()
 
     def _connect_worker_signals(self):
-        """Connect worker signals to their respective slots"""
+        
         self.worker.finished.connect(self.handle_results)
         self.worker.progress.connect(self.update_progress)
         self.worker.error.connect(self.handle_error)
 
     def _show_progress_dialog(self):
-        """Show and configure the progress dialog"""
+        
         self.progress_dialog = QProgressDialog("Evaluating channel...", "Cancel", 0, 0, self)
         self.progress_dialog.setWindowTitle("Analysis in Progress")
         self.progress_dialog.setWindowModality(Qt.WindowModal)
@@ -596,14 +546,14 @@ class YouTubePartnerEstimator(QMainWindow):
         self.progress_dialog.show()
 
     def _handle_cancel_operation(self):
-        """Handle canceling the evaluation process"""
-        self.worker.terminate()  # Stop the worker thread
-        self.evaluate_button.setEnabled(True)  # Re-enable the button
-        self.progress_dialog.hide()  # Close the dialog
+        
+        self.worker.terminate()  
+        self.evaluate_button.setEnabled(True)  
+        self.progress_dialog.hide()  
         QMessageBox.information(self, "Operation Canceled", "The evaluation process has been canceled.")
 
     def update_results_table(self, results):
-        """Update the results table with a comparison layout"""
+        
         metrics = [
             ('Sentiment Score', f"{results['sponsored_sentiment']:.3f}", f"{results['unsponsored_sentiment']:.3f}"),
             ('Engagement Rate', f"{results['sponsored_engagement']:.3f}", f"{results['unsponsored_engagement']:.3f}"),
@@ -637,25 +587,22 @@ class YouTubePartnerEstimator(QMainWindow):
         self.results_table.setRowCount(len(metrics))
 
         for row, (metric, sponsored, organic) in enumerate(metrics):
-            # Add metric name
+
             self.results_table.setItem(row, 0, QTableWidgetItem(metric))
 
-            # Add sponsored value with conditional formatting
             sponsored_item = QTableWidgetItem(str(sponsored))
             sponsored_item.setTextAlignment(Qt.AlignCenter)
-            if sponsored > organic:  # Highlight higher values
-                sponsored_item.setBackground(QColor(200, 255, 200))  # Light green
+            if sponsored > organic:  
+                sponsored_item.setBackground(QColor(200, 255, 200))  
             self.results_table.setItem(row, 1, sponsored_item)
 
-            # Add organic value with conditional formatting
             organic_item = QTableWidgetItem(str(organic))
             organic_item.setTextAlignment(Qt.AlignCenter)
             if organic > sponsored:
-                organic_item.setBackground(QColor(200, 255, 200))  # Light green
+                organic_item.setBackground(QColor(200, 255, 200))  
             self.results_table.setItem(row, 2, organic_item)
     
     def _get_title_style(self):
-        """Return the style for the title label"""
         return """
             font-size: 24px;
             font-weight: bold;
@@ -663,7 +610,6 @@ class YouTubePartnerEstimator(QMainWindow):
         """
 
     def _get_subtitle_style(self):
-        """Return the style for the subtitle label"""
         return """
             font-size: 16px;
             font-weight: bold;
@@ -671,7 +617,6 @@ class YouTubePartnerEstimator(QMainWindow):
         """
     
     def _get_progress_dialog_style(self):
-        """Return the style for the progress dialog"""
         return """
             QProgressDialog {
                 background-color: white;
@@ -729,32 +674,29 @@ class YouTubePartnerEstimator(QMainWindow):
 class FadeButton(QPushButton):
     def __init__(self, text, parent=None):
         super().__init__(text, parent)
-        self._opacity = 1.0  # Fully opaque by default
+        self._opacity = 1.0  
         self.setStyleSheet(
             "background-color: #ff007f; color: white; font-weight: bold; padding: 8px 15px; border-radius: 5px;"
         )
 
-        # Animation for fading
         self.fade_animation = QPropertyAnimation(self, b"opacity")
-        self.fade_animation.setDuration(500)  # Animation duration in milliseconds
-        self.fade_animation.setStartValue(1.0)  # Start fully opaque
-        self.fade_animation.setEndValue(0.5)  # Fade to semi-transparent
+        self.fade_animation.setDuration(500)  
+        self.fade_animation.setStartValue(1.0)
+        self.fade_animation.setEndValue(0.5)
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.setOpacity(self._opacity)  # Apply opacity
+        painter.setOpacity(self._opacity)
         painter.setBrush(QBrush(Qt.transparent))
         painter.setRenderHint(QPainter.Antialiasing)
         painter.drawRect(self.rect())
         super().paintEvent(event)
 
     def fade_out(self):
-        """Trigger fade-out animation."""
         self.fade_animation.setDirection(QPropertyAnimation.Forward)
         self.fade_animation.start()
 
     def fade_in(self):
-        """Trigger fade-in animation."""
         self.fade_animation.setDirection(QPropertyAnimation.Backward)
         self.fade_animation.start()
 
@@ -842,10 +784,6 @@ class ResponsiveInput(QLineEdit):
 
 def main():
     app = QApplication(sys.argv)
-    
-    # Set application-wide font
-    #font = QFont("Segoe UI", 10)
-    #app.setFont(font)
     
     window = YouTubePartnerEstimator()
     window.show()
