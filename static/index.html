@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YouTube Partnership Analyzer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --pink:        #C96BA7;
+      --pink-hover:  #b35a94;
+      --pink-light:  #f3d4ea;
+      --pink-bg:     #fdf5fa;
+      --green:       #16a34a;
+      --green-light: #dcfce7;
+      --text:        #111827;
+      --muted:       #6b7280;
+      --border:      #e5e7eb;
+      --bg:          #f3f4f6;
+      --white:       #ffffff;
+      --radius:      12px;
+      --shadow:      0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+    }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 40px 16px 80px;
+      line-height: 1.5;
+    }
+
+    .page { max-width: 820px; margin: 0 auto; }
+
+    /* ── Page header ── */
+    .page-header { text-align: center; margin-bottom: 36px; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 5px 14px 5px 8px;
+      margin-bottom: 18px;
+      box-shadow: var(--shadow);
+    }
+    .badge-dot {
+      width: 20px; height: 20px;
+      background: var(--pink);
+      border-radius: 50%;
+    }
+    .badge span {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+    }
+
+    .page-header h1 {
+      font-size: 30px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.5px;
+      margin-bottom: 10px;
+    }
+    .page-header h1 em { color: var(--pink); font-style: normal; }
+
+    .page-header p {
+      font-size: 15px;
+      color: var(--muted);
+      max-width: 460px;
+      margin: 0 auto;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    .card-head {
+      padding: 18px 24px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .card-head h2 { font-size: 14px; font-weight: 700; color: var(--text); }
+    .card-head p  { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    .card-body { padding: 20px 24px; }
+
+    /* ── Form fields ── */
+    .field { display: flex; flex-direction: column; gap: 4px; }
+
+    .field > label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .field .hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--white);
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus {
+      border-color: var(--pink);
+      box-shadow: 0 0 0 3px var(--pink-light);
+    }
+    input::placeholder { color: #9ca3af; }
+
+    .url-field { margin-bottom: 16px; }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    /* ── Toggle ── */
+    .toggle-box {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 12px 14px;
+      background: #f9fafb;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 20px;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    .toggle-box:has(input:checked) { border-color: var(--pink-light); background: var(--pink-bg); }
+
+    .toggle-box input[type="checkbox"] {
+      width: 15px; height: 15px;
+      accent-color: var(--pink);
+      margin-top: 2px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .toggle-label { font-size: 13px; font-weight: 600; color: var(--text); }
+    .toggle-desc  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Analyze button ── */
+    #analyzeBtn {
+      width: 100%;
+      padding: 12px;
+      background: var(--pink);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      letter-spacing: .1px;
+      transition: background .15s, transform .1s, box-shadow .15s;
+      box-shadow: 0 2px 8px rgba(201,107,167,.35);
+    }
+    #analyzeBtn:hover:not(:disabled) {
+      background: var(--pink-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(201,107,167,.45);
+    }
+    #analyzeBtn:active:not(:disabled) { transform: translateY(0); }
+    #analyzeBtn:disabled { background: #d1d5db; box-shadow: none; cursor: not-allowed; }
+
+    /* ── Error banner ── */
+    .cookie-warning {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #92400e;
+    }
+    .cookie-warning strong { display: block; font-size: 13px; margin-bottom: 4px; }
+    .cookie-warning code {
+      background: #fef3c7;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .error-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: var(--radius);
+      padding: 13px 16px;
+      color: #dc2626;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+    .err-icon {
+      flex-shrink: 0;
+      width: 18px; height: 18px;
+      background: #dc2626;
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    /* ── Progress ── */
+    .progress-top {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .spinner {
+      width: 24px; height: 24px;
+      border: 3px solid var(--pink-light);
+      border-top-color: var(--pink);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .done-icon {
+      width: 24px; height: 24px;
+      background: var(--green);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .progress-title { font-size: 14px; font-weight: 700; color: var(--text); }
+    #progressStatus { font-size: 13px; color: var(--pink); font-weight: 500; margin-top: 1px; }
+
+    .progress-log {
+      padding: 10px 24px 14px;
+      max-height: 190px;
+      overflow-y: auto;
+    }
+    .log-entry {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      padding: 3px 0;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+    .log-entry::before {
+      content: '';
+      width: 5px; height: 5px;
+      background: #d1d5db;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 5px;
+    }
+    .log-entry.latest { color: var(--text); font-weight: 600; }
+    .log-entry.latest::before { background: var(--pink); }
+
+    /* ── Results table ── */
+    .result-meta {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .channel-thumb {
+      width: 42px; height: 42px;
+      background: var(--pink-bg);
+      border: 1.5px solid var(--pink-light);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .result-meta h2 { font-size: 16px; font-weight: 700; color: var(--text); }
+    .result-meta p  { font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    .tbl-section-row td {
+      padding: 0;
+      background: #f9fafb;
+      border-top: 1px solid var(--border);
+    }
+    .tbl-section-label {
+      padding: 7px 24px;
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: .9px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    thead th {
+      padding: 10px 24px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: #f9fafb;
+      text-align: right;
+    }
+    thead th:first-child { text-align: left; }
+
+    tbody tr { border-bottom: 1px solid #f3f4f6; transition: background .1s; }
+    tbody tr:hover { background: #f9fafb; }
+    tbody tr.tbl-section-row:hover { background: #f9fafb; }
+
+    tbody td {
+      padding: 10px 24px;
+      font-size: 14px;
+      text-align: right;
+      color: var(--text);
+    }
+    tbody td:first-child {
+      text-align: left;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    td.winner {
+      color: var(--green);
+      font-weight: 700;
+      background: var(--green-light);
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="badge">
+      <div class="badge-dot"></div>
+      <span>Foreo Partnership Tool</span>
+    </div>
+    <h1>YouTube <em>Partnership</em> Analyzer</h1>
+    <p>Compare audience sentiment and engagement between a channel's sponsored and organic videos.</p>
+  </div>
+
+  <!-- Config card -->
+  <div class="card">
+    <div class="card-head">
+      <h2>Channel Configuration</h2>
+      <p>Enter a YouTube channel URL and tune the analysis parameters</p>
+    </div>
+    <div class="card-body">
+
+      <div class="field url-field">
+        <label for="url">YouTube Channel URL</label>
+        <input type="text" id="url"
+          placeholder="https://www.youtube.com/@ChannelName" />
+        <span class="hint">Paste the channel's URL — any format works (/@handle, /channel/UC…, /c/…).</span>
+      </div>
+
+      <div class="grid-3">
+        <div class="field">
+          <label for="months">Analysis Period <small style="font-weight:400;color:var(--muted)">(months)</small></label>
+          <input type="number" id="months" value="6" min="1" max="24" />
+          <span class="hint">How far back to look for videos. 6 months is a good default.</span>
+        </div>
+        <div class="field">
+          <label for="maxVideos">Max Videos</label>
+          <input type="number" id="maxVideos" value="15" min="1" max="50" />
+          <span class="hint">Cap the number of videos analyzed. More = slower but more accurate.</span>
+        </div>
+        <div class="field">
+          <label for="maxComments">Comments per Video</label>
+          <input type="number" id="maxComments" value="500" min="50" max="2000" />
+          <span class="hint">Fetching more comments improves sentiment accuracy at the cost of speed.</span>
+        </div>
+      </div>
+
+      <label class="toggle-box" for="translate">
+        <input type="checkbox" id="translate" />
+        <div>
+          <div class="toggle-label">Translate non-English comments</div>
+          <div class="toggle-desc">Uses Google Translate before sentiment scoring. Recommended only for non-English channels — adds significant run time.</div>
+        </div>
+      </label>
+
+      <button id="analyzeBtn" onclick="startAnalysis()">Analyze Channel</button>
+
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div id="cookieWarning" class="cookie-warning hidden">
+    <div>⚠</div>
+    <div>
+      <strong>Sponsored video detection requires a cookies.txt file</strong>
+      To detect YouTube's "Includes paid promotion" flag, the app needs your YouTube session.
+      Export your cookies using the
+      <a href="https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc" target="_blank" style="color:#92400e">Get cookies.txt LOCALLY</a>
+      Chrome extension, then save the file as <code>cookies.txt</code> in the project folder and restart the server.
+      Without it, only description-based keyword detection will be used.
+    </div>
+  </div>
+
+  <div id="errorSection" class="error-banner hidden">
+    <div class="err-icon">!</div>
+    <span id="errorText"></span>
+  </div>
+
+  <!-- Progress -->
+  <div id="progressSection" class="card hidden">
+    <div class="progress-top">
+      <div id="progressIcon" class="spinner"></div>
+      <div>
+        <div class="progress-title" id="progressTitle">Analyzing channel…</div>
+        <div id="progressStatus">Starting up</div>
+      </div>
+    </div>
+    <div class="progress-log" id="progressLog"></div>
+  </div>
+
+  <!-- Results -->
+  <div id="resultsSection" class="card hidden">
+    <div class="result-meta">
+      <div class="channel-thumb">▶</div>
+      <div>
+        <h2 id="channelName"></h2>
+        <p>Sponsored vs. Organic — green cell indicates the higher value</p>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:44%">Metric</th>
+          <th>Sponsored</th>
+          <th>Organic</th>
+        </tr>
+      </thead>
+      <tbody id="resultsBody"></tbody>
+    </table>
+  </div>
+
+</div>
+<script>
+  let eventSource = null;
+
+  fetch('/cookie-status')
+    .then(r => r.json())
+    .then(d => { if (!d.loaded) document.getElementById('cookieWarning').classList.remove('hidden'); })
+    .catch(() => {});
+
+  const SECTIONS = [
+    {
+      label: 'Overview',
+      rows: [
+        { key: 'Sentiment Score',   get: r => [r.sponsored_sentiment,  r.unsponsored_sentiment],  fmt: v => v.toFixed(3) },
+        { key: 'Engagement Rate',   get: r => [r.sponsored_engagement, r.unsponsored_engagement], fmt: v => v.toFixed(3) },
+        { key: 'Videos Analyzed',   get: r => [r.num_sponsored,        r.num_unsponsored] },
+      ]
+    },
+    {
+      label: 'Volume',
+      rows: [
+        { key: 'Total Views',    get: r => [r.sponsored_views,    r.unsponsored_views],    fmt: v => v.toLocaleString() },
+        { key: 'Total Likes',    get: r => [r.sponsored_likes,    r.unsponsored_likes],    fmt: v => v.toLocaleString() },
+        { key: 'Total Comments', get: r => [r.sponsored_comments, r.unsponsored_comments], fmt: v => v.toLocaleString() },
+      ]
+    },
+    {
+      label: 'Comment Sentiment',
+      rows: [
+        { key: 'Positive Comments', get: r => [r.sponsored_sentiment_counts.positive, r.unsponsored_sentiment_counts.positive] },
+        { key: 'Neutral Comments',  get: r => [r.sponsored_sentiment_counts.neutral,  r.unsponsored_sentiment_counts.neutral]  },
+        { key: 'Negative Comments', get: r => [r.sponsored_sentiment_counts.negative, r.unsponsored_sentiment_counts.negative] },
+      ]
+    },
+    {
+      label: 'Per-Video Averages',
+      rows: [
+        { key: 'Views / Video',    get: r => [avg(r.sponsored_views,    r.num_sponsored),    avg(r.unsponsored_views,    r.num_unsponsored)],    fmt: v => v.toLocaleString() },
+        { key: 'Likes / Video',    get: r => [avg(r.sponsored_likes,    r.num_sponsored),    avg(r.unsponsored_likes,    r.num_unsponsored)],    fmt: v => v.toLocaleString() },
+        { key: 'Comments / Video', get: r => [avg(r.sponsored_comments, r.num_sponsored),    avg(r.unsponsored_comments, r.num_unsponsored)],    fmt: v => v.toLocaleString() },
+        { key: 'Positive / Video', get: r => [avg(r.sponsored_sentiment_counts.positive, r.num_sponsored), avg(r.unsponsored_sentiment_counts.positive, r.num_unsponsored)] },
+        { key: 'Neutral / Video',  get: r => [avg(r.sponsored_sentiment_counts.neutral,  r.num_sponsored), avg(r.unsponsored_sentiment_counts.neutral,  r.num_unsponsored)] },
+        { key: 'Negative / Video', get: r => [avg(r.sponsored_sentiment_counts.negative, r.num_sponsored), avg(r.unsponsored_sentiment_counts.negative, r.num_unsponsored)] },
+      ]
+    },
+  ];
+
+  function avg(total, count) { return count > 0 ? Math.round(total / count) : 0; }
+
+  function showError(msg) {
+    document.getElementById('errorText').textContent = msg;
+    document.getElementById('errorSection').classList.remove('hidden');
+  }
+  function clearError() { document.getElementById('errorSection').classList.add('hidden'); }
+
+  function startAnalysis() {
+    const url = document.getElementById('url').value.trim();
+    if (!url) { showError('Please enter a YouTube channel URL.'); return; }
+
+    const months      = parseInt(document.getElementById('months').value)      || 6;
+    const maxVideos   = parseInt(document.getElementById('maxVideos').value)   || 15;
+    const maxComments = parseInt(document.getElementById('maxComments').value) || 500;
+    const translate   = document.getElementById('translate').checked;
+
+    clearError();
+    document.getElementById('progressLog').innerHTML = '';
+    document.getElementById('progressStatus').textContent = 'Starting up';
+    document.getElementById('progressTitle').textContent = 'Analyzing channel…';
+    document.getElementById('progressIcon').className = 'spinner';
+    document.getElementById('progressIcon').textContent = '';
+    document.getElementById('progressSection').classList.remove('hidden');
+    document.getElementById('resultsSection').classList.add('hidden');
+    document.getElementById('analyzeBtn').disabled = true;
+
+    if (eventSource) { eventSource.close(); eventSource = null; }
+
+    const params = new URLSearchParams({ url, months, max_videos: maxVideos, max_comments: maxComments, translate });
+    eventSource = new EventSource(`/analyze?${params}`);
+
+    eventSource.onmessage = function (e) {
+      const data = JSON.parse(e.data);
+
+      if (data.type === 'progress') {
+        document.getElementById('progressStatus').textContent = data.message;
+        const log = document.getElementById('progressLog');
+        const prev = log.querySelector('.latest');
+        if (prev) prev.classList.remove('latest');
+        const line = document.createElement('div');
+        line.className = 'log-entry latest';
+        line.textContent = data.message;
+        log.appendChild(line);
+        log.scrollTop = log.scrollHeight;
+
+      } else if (data.type === 'result') {
+        eventSource.close();
+        document.getElementById('analyzeBtn').disabled = false;
+        document.getElementById('progressTitle').textContent = 'Analysis complete';
+        document.getElementById('progressStatus').textContent = 'All videos processed';
+        const icon = document.getElementById('progressIcon');
+        icon.className = 'done-icon';
+        icon.textContent = '✓';
+        renderResults(data.data);
+        setTimeout(() => {
+          document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+
+      } else if (data.type === 'error') {
+        eventSource.close();
+        document.getElementById('analyzeBtn').disabled = false;
+        document.getElementById('progressSection').classList.add('hidden');
+        showError(data.message);
+      }
+    };
+
+    eventSource.onerror = function () {
+      if (eventSource.readyState === EventSource.CLOSED) return;
+      eventSource.close();
+      document.getElementById('analyzeBtn').disabled = false;
+      showError('Connection lost. Please try again.');
+    };
+  }
+
+  function renderResults(r) {
+    document.getElementById('channelName').textContent = r.channel_name || r.channel_id;
+    document.getElementById('resultsSection').classList.remove('hidden');
+
+    const tbody = document.getElementById('resultsBody');
+    tbody.innerHTML = '';
+
+    SECTIONS.forEach(section => {
+      const sectionRow = document.createElement('tr');
+      sectionRow.className = 'tbl-section-row';
+      sectionRow.innerHTML = `<td colspan="3"><div class="tbl-section-label">${section.label}</div></td>`;
+      tbody.appendChild(sectionRow);
+
+      section.rows.forEach(({ key, get, fmt }) => {
+        const [s, o] = get(r);
+        const fmtFn = fmt || (v => v.toLocaleString());
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          `<td>${key}</td>` +
+          `<td class="${s > o ? 'winner' : ''}">${fmtFn(s)}</td>` +
+          `<td class="${o > s ? 'winner' : ''}">${fmtFn(o)}</td>`;
+        tbody.appendChild(tr);
+      });
+    });
+  }
+</script>
+</body>
+</html>
