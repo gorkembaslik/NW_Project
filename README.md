@@ -1,15 +1,6 @@
----
-title: YouTube Partnership Analyzer
-emoji: 📊
-colorFrom: red
-colorTo: blue
-sdk: docker
-pinned: false
----
-
 # YouTube Partnership Analyzer
 
-Ever wondered whether sponsorships actually hurt a YouTuber's relationship with their audience? This tool answers that. Paste in a channel URL and it pulls their recent videos, separates the sponsored ones from the organic ones, and compares how each group performs — in terms of both audience sentiment and engagement.
+Ever wondered whether sponsorships actually hurt a YouTuber's relationship with their audience? This tool answers that. Paste in a channel URL and it pulls their recent videos, separates the sponsored ones from the organic ones, and compares how each group performs in terms of both audience sentiment and engagement.
 
 Built as a partnership evaluation tool for Foreo, but it works for any YouTube channel.
 
@@ -52,4 +43,4 @@ Any of these work:
 
 ## Tech stack
 
-FastAPI backend, plain HTML/JS frontend, deployed on Hugging Face Spaces via Docker. Sentiment scoring uses NLTK's VADER (60% weight) and TextBlob (40% weight). Sponsorship detection uses YouTube's `paidProductPlacementDetails` API field — no scraping needed.
+FastAPI backend, plain HTML/JS frontend, deployed on Hugging Face Spaces via Docker. Sentiment scoring uses NLTK's VADER (60% weight) and TextBlob (40% weight). Sponsorship detection uses YouTube's `paidProductPlacementDetails` API field, no scraping needed.
