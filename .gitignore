@@ -6,3 +6,6 @@
 .env
 cookies.txt
 __pycache__/
+models/
+bash.exe.stackdump
+python

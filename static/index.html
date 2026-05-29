@@ -14,6 +14,8 @@
       --pink-bg:     #fdf5fa;
       --green:       #16a34a;
       --green-light: #dcfce7;
+      --amber:       #d97706;
+      --red:         #dc2626;
       --text:        #111827;
       --muted:       #6b7280;
       --border:      #e5e7eb;
@@ -48,34 +50,18 @@
       margin-bottom: 18px;
       box-shadow: var(--shadow);
     }
-    .badge-dot {
-      width: 20px; height: 20px;
-      background: var(--pink);
-      border-radius: 50%;
-    }
+    .badge-dot { width: 20px; height: 20px; background: var(--pink); border-radius: 50%; }
     .badge span {
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--muted);
-      letter-spacing: 0.6px;
-      text-transform: uppercase;
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      letter-spacing: 0.6px; text-transform: uppercase;
     }
 
     .page-header h1 {
-      font-size: 30px;
-      font-weight: 800;
-      color: var(--text);
-      letter-spacing: -0.5px;
-      margin-bottom: 10px;
+      font-size: 30px; font-weight: 800; color: var(--text);
+      letter-spacing: -0.5px; margin-bottom: 10px;
     }
     .page-header h1 em { color: var(--pink); font-style: normal; }
-
-    .page-header p {
-      font-size: 15px;
-      color: var(--muted);
-      max-width: 460px;
-      margin: 0 auto;
-    }
+    .page-header p { font-size: 15px; color: var(--muted); max-width: 460px; margin: 0 auto; }
 
     /* ── Card ── */
     .card {
@@ -86,30 +72,15 @@
       margin-bottom: 16px;
       overflow: hidden;
     }
-
-    .card-head {
-      padding: 18px 24px 14px;
-      border-bottom: 1px solid var(--border);
-    }
+    .card-head { padding: 18px 24px 14px; border-bottom: 1px solid var(--border); }
     .card-head h2 { font-size: 14px; font-weight: 700; color: var(--text); }
     .card-head p  { font-size: 13px; color: var(--muted); margin-top: 2px; }
-
     .card-body { padding: 20px 24px; }
 
     /* ── Form fields ── */
     .field { display: flex; flex-direction: column; gap: 4px; }
-
-    .field > label {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .field .hint {
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 4px;
-    }
+    .field > label { font-size: 13px; font-weight: 600; color: var(--text); }
+    .field .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
     input[type="text"],
     input[type="number"] {
@@ -133,9 +104,9 @@
 
     .url-field { margin-bottom: 16px; }
 
-    .grid-3 {
+    .grid-2 {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 14px;
       margin-bottom: 16px;
     }
@@ -149,12 +120,11 @@
       background: #f9fafb;
       border: 1.5px solid var(--border);
       border-radius: 8px;
-      margin-bottom: 20px;
+      margin-bottom: 12px;
       cursor: pointer;
       transition: border-color .15s;
     }
     .toggle-box:has(input:checked) { border-color: var(--pink-light); background: var(--pink-bg); }
-
     .toggle-box input[type="checkbox"] {
       width: 15px; height: 15px;
       accent-color: var(--pink);
@@ -164,6 +134,13 @@
     }
     .toggle-label { font-size: 13px; font-weight: 600; color: var(--text); }
     .toggle-desc  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Comment limit field ── */
+    #commentLimitField {
+      margin-bottom: 16px;
+      transition: opacity .2s;
+    }
+    #commentLimitField.hidden { display: none !important; }
 
     /* ── Analyze button ── */
     #analyzeBtn {
@@ -190,26 +167,6 @@
     #analyzeBtn:disabled { background: #d1d5db; box-shadow: none; cursor: not-allowed; }
 
     /* ── Error banner ── */
-    .cookie-warning {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      background: #fffbeb;
-      border: 1px solid #fcd34d;
-      border-radius: var(--radius);
-      padding: 14px 18px;
-      margin-bottom: 16px;
-      font-size: 13px;
-      color: #92400e;
-    }
-    .cookie-warning strong { display: block; font-size: 13px; margin-bottom: 4px; }
-    .cookie-warning code {
-      background: #fef3c7;
-      padding: 1px 5px;
-      border-radius: 4px;
-      font-size: 12px;
-    }
-
     .error-banner {
       display: flex;
       align-items: flex-start;
@@ -243,7 +200,6 @@
       padding: 18px 24px;
       border-bottom: 1px solid var(--border);
     }
-
     .spinner {
       width: 24px; height: 24px;
       border: 3px solid var(--pink-light);
@@ -253,7 +209,6 @@
       flex-shrink: 0;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-
     .done-icon {
       width: 24px; height: 24px;
       background: var(--green);
@@ -266,15 +221,9 @@
       font-weight: 800;
       flex-shrink: 0;
     }
-
     .progress-title { font-size: 14px; font-weight: 700; color: var(--text); }
     #progressStatus { font-size: 13px; color: var(--pink); font-weight: 500; margin-top: 1px; }
-
-    .progress-log {
-      padding: 10px 24px 14px;
-      max-height: 190px;
-      overflow-y: auto;
-    }
+    .progress-log { padding: 10px 24px 14px; max-height: 190px; overflow-y: auto; }
     .log-entry {
       display: flex;
       align-items: baseline;
@@ -294,7 +243,7 @@
     .log-entry.latest { color: var(--text); font-weight: 600; }
     .log-entry.latest::before { background: var(--pink); }
 
-    /* ── Results table ── */
+    /* ── Results ── */
     .result-meta {
       display: flex;
       align-items: center;
@@ -307,64 +256,76 @@
       background: var(--pink-bg);
       border: 1.5px solid var(--pink-light);
       border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
     }
     .result-meta h2 { font-size: 16px; font-weight: 700; color: var(--text); }
     .result-meta p  { font-size: 12px; color: var(--muted); margin-top: 1px; }
 
-    table { width: 100%; border-collapse: collapse; }
-
-    .tbl-section-row td {
-      padding: 0;
-      background: #f9fafb;
-      border-top: 1px solid var(--border);
+    /* ── Verdict ── */
+    .verdict {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 13px 24px;
+      border-bottom: 1px solid var(--border);
+      background: #f0fdf4;
+      font-size: 13.5px;
+      color: #166534;
     }
-    .tbl-section-label {
-      padding: 7px 24px;
-      font-size: 10.5px;
-      font-weight: 700;
-      letter-spacing: .9px;
-      text-transform: uppercase;
+    .verdict.neutral {
+      background: #f9fafb;
       color: var(--muted);
     }
+    .verdict-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .verdict strong { font-weight: 700; }
 
+    /* ── Zero-video notice ── */
+    .zero-notice {
+      padding: 20px 24px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+      background: #f9fafb;
+      border-bottom: 1px solid var(--border);
+    }
+    .zero-notice strong { display: block; font-size: 14px; color: var(--text); margin-bottom: 4px; }
+
+    /* ── Table ── */
+    table { width: 100%; border-collapse: collapse; }
+    .tbl-section-row td { padding: 0; background: #f9fafb; border-top: 1px solid var(--border); }
+    .tbl-section-label {
+      padding: 7px 24px;
+      font-size: 10.5px; font-weight: 700;
+      letter-spacing: .9px; text-transform: uppercase;
+      color: var(--muted);
+    }
     thead th {
       padding: 10px 24px;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: .5px;
-      text-transform: uppercase;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: .5px; text-transform: uppercase;
       color: var(--muted);
       background: #f9fafb;
       text-align: right;
     }
     thead th:first-child { text-align: left; }
-
     tbody tr { border-bottom: 1px solid #f3f4f6; transition: background .1s; }
     tbody tr:hover { background: #f9fafb; }
     tbody tr.tbl-section-row:hover { background: #f9fafb; }
+    tbody td { padding: 10px 24px; font-size: 14px; text-align: right; color: var(--text); }
+    tbody td:first-child { text-align: left; font-size: 13px; color: var(--muted); }
+    td.winner { color: var(--green); font-weight: 700; background: var(--green-light); }
 
-    tbody td {
-      padding: 10px 24px;
-      font-size: 14px;
-      text-align: right;
-      color: var(--text);
-    }
-    tbody td:first-child {
-      text-align: left;
-      font-size: 13px;
-      color: var(--muted);
-    }
-
-    td.winner {
-      color: var(--green);
-      font-weight: 700;
-      background: var(--green-light);
-    }
+    /* ── Sentiment label ── */
+    .sent-pct { font-weight: 700; }
+    .sent-label { font-size: 11px; font-weight: 600; margin-left: 4px; }
+    .sent-positive { color: var(--green); }
+    .sent-neutral  { color: var(--amber); }
+    .sent-negative { color: var(--red);   }
 
     .hidden { display: none !important; }
   </style>
@@ -394,10 +355,10 @@
         <label for="url">YouTube Channel URL</label>
         <input type="text" id="url"
           placeholder="https://www.youtube.com/@ChannelName" />
-        <span class="hint">Paste the channel's URL — any format works (/@handle, /channel/UC…, /c/…).</span>
+        <span class="hint">Paste the channel's URL — any format works (/@handle, /channel/UC…, /c/…, or /name).</span>
       </div>
 
-      <div class="grid-3">
+      <div class="grid-2">
         <div class="field">
           <label for="months">Analysis Period <small style="font-weight:400;color:var(--muted)">(months)</small></label>
           <input type="number" id="months" value="6" min="1" max="24" />
@@ -408,11 +369,20 @@
           <input type="number" id="maxVideos" value="15" min="1" max="50" />
           <span class="hint">Cap the number of videos analyzed. More = slower but more accurate.</span>
         </div>
-        <div class="field">
-          <label for="maxComments">Comments per Video</label>
-          <input type="number" id="maxComments" value="500" min="50" max="2000" />
-          <span class="hint">Fetching more comments improves sentiment accuracy at the cost of speed.</span>
+      </div>
+
+      <label class="toggle-box" for="allComments" onclick="toggleCommentMode()">
+        <input type="checkbox" id="allComments" checked />
+        <div>
+          <div class="toggle-label">Analyze all comments per video</div>
+          <div class="toggle-desc">Fetches every available comment for maximum sentiment accuracy. Significantly slower — best for detailed reports.</div>
         </div>
+      </label>
+
+      <div id="commentLimitField" class="field hidden">
+        <label for="maxComments">Comments per Video</label>
+        <input type="number" id="maxComments" value="100" min="50" max="2000" />
+        <span class="hint">100 is a good balance of speed and accuracy. Increase for more thorough sentiment scoring.</span>
       </div>
 
       <label class="toggle-box" for="translate">
@@ -429,18 +399,6 @@
   </div>
 
   <!-- Error -->
-  <div id="cookieWarning" class="cookie-warning hidden">
-    <div>⚠</div>
-    <div>
-      <strong>Sponsored video detection requires a cookies.txt file</strong>
-      To detect YouTube's "Includes paid promotion" flag, the app needs your YouTube session.
-      Export your cookies using the
-      <a href="https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc" target="_blank" style="color:#92400e">Get cookies.txt LOCALLY</a>
-      Chrome extension, then save the file as <code>cookies.txt</code> in the project folder and restart the server.
-      Without it, only description-based keyword detection will be used.
-    </div>
-  </div>
-
   <div id="errorSection" class="error-banner hidden">
     <div class="err-icon">!</div>
     <span id="errorText"></span>
@@ -468,7 +426,14 @@
       </div>
     </div>
 
-    <table>
+    <div id="verdictBox" class="verdict hidden">
+      <div class="verdict-icon">&#9881;</div>
+      <div id="verdictText"></div>
+    </div>
+
+    <div id="zeroNotice" class="zero-notice hidden"></div>
+
+    <table id="resultsTable">
       <thead>
         <tr>
           <th style="width:44%">Metric</th>
@@ -484,18 +449,18 @@
 <script>
   let eventSource = null;
 
-  fetch('/cookie-status')
-    .then(r => r.json())
-    .then(d => { if (!d.loaded) document.getElementById('cookieWarning').classList.remove('hidden'); })
-    .catch(() => {});
+  function toggleCommentMode() {
+    const isChecked = document.getElementById('allComments').checked;
+    document.getElementById('commentLimitField').classList.toggle('hidden', isChecked);
+  }
 
   const SECTIONS = [
     {
       label: 'Overview',
       rows: [
-        { key: 'Sentiment Score',   get: r => [r.sponsored_sentiment,  r.unsponsored_sentiment],  fmt: v => v.toFixed(3) },
-        { key: 'Engagement Rate',   get: r => [r.sponsored_engagement, r.unsponsored_engagement], fmt: v => v.toFixed(3) },
-        { key: 'Videos Analyzed',   get: r => [r.num_sponsored,        r.num_unsponsored] },
+        { key: 'Sentiment Score',  get: r => [r.sponsored_sentiment,  r.unsponsored_sentiment],  fmt: fmtSentiment },
+        { key: 'Engagement Rate',  get: r => [r.sponsored_engagement, r.unsponsored_engagement], fmt: fmtEngagement },
+        { key: 'Videos Analyzed', get: r => [r.num_sponsored,         r.num_unsponsored] },
       ]
     },
     {
@@ -517,17 +482,52 @@
     {
       label: 'Per-Video Averages',
       rows: [
-        { key: 'Views / Video',    get: r => [avg(r.sponsored_views,    r.num_sponsored),    avg(r.unsponsored_views,    r.num_unsponsored)],    fmt: v => v.toLocaleString() },
-        { key: 'Likes / Video',    get: r => [avg(r.sponsored_likes,    r.num_sponsored),    avg(r.unsponsored_likes,    r.num_unsponsored)],    fmt: v => v.toLocaleString() },
-        { key: 'Comments / Video', get: r => [avg(r.sponsored_comments, r.num_sponsored),    avg(r.unsponsored_comments, r.num_unsponsored)],    fmt: v => v.toLocaleString() },
-        { key: 'Positive / Video', get: r => [avg(r.sponsored_sentiment_counts.positive, r.num_sponsored), avg(r.unsponsored_sentiment_counts.positive, r.num_unsponsored)] },
-        { key: 'Neutral / Video',  get: r => [avg(r.sponsored_sentiment_counts.neutral,  r.num_sponsored), avg(r.unsponsored_sentiment_counts.neutral,  r.num_unsponsored)] },
-        { key: 'Negative / Video', get: r => [avg(r.sponsored_sentiment_counts.negative, r.num_sponsored), avg(r.unsponsored_sentiment_counts.negative, r.num_unsponsored)] },
+        { key: 'Views / Video',    get: r => [avg(r.sponsored_views,    r.num_sponsored), avg(r.unsponsored_views,    r.num_unsponsored)], fmt: v => v.toLocaleString() },
+        { key: 'Likes / Video',    get: r => [avg(r.sponsored_likes,    r.num_sponsored), avg(r.unsponsored_likes,    r.num_unsponsored)], fmt: v => v.toLocaleString() },
+        { key: 'Comments / Video', get: r => [avg(r.sponsored_comments, r.num_sponsored), avg(r.unsponsored_comments, r.num_unsponsored)], fmt: v => v.toLocaleString() },
       ]
     },
   ];
 
   function avg(total, count) { return count > 0 ? Math.round(total / count) : 0; }
+
+  function fmtSentiment(v) {
+    const pct   = (v * 100).toFixed(1);
+    const cls   = v > 0.55 ? 'sent-positive' : v < 0.45 ? 'sent-negative' : 'sent-neutral';
+    const label = v > 0.55 ? 'Positive'      : v < 0.45 ? 'Negative'      : 'Neutral';
+    return `<span class="sent-pct">${pct}%</span><span class="sent-label ${cls}">${label}</span>`;
+  }
+
+  function fmtEngagement(v) {
+    return `${(v * 100).toFixed(2)}%`;
+  }
+
+  function generateVerdict(r) {
+    const sp = r.num_sponsored, un = r.num_unsponsored;
+
+    if (sp === 0 && un === 0)
+      return { text: 'No videos found in this period.', neutral: true };
+    if (sp === 0)
+      return { text: `No sponsored videos found among the ${un} videos analyzed — cannot compare groups.`, neutral: true };
+    if (un === 0)
+      return { text: `No organic videos found among the ${sp} videos analyzed — cannot compare groups.`, neutral: true };
+
+    const sentDiff = r.sponsored_sentiment - r.unsponsored_sentiment;
+    const engDiff  = r.sponsored_engagement - r.unsponsored_engagement;
+
+    const sentLead = Math.abs(sentDiff) > 0.01  ? (sentDiff > 0 ? 'Sponsored' : 'Organic') : null;
+    const engLead  = Math.abs(engDiff)  > 0.001 ? (engDiff  > 0 ? 'Sponsored' : 'Organic') : null;
+
+    if (!sentLead && !engLead)
+      return { text: 'Sponsored and organic videos perform similarly across all metrics.', neutral: true };
+    if (sentLead && engLead && sentLead === engLead)
+      return { text: `${sentLead} videos score higher on both sentiment and engagement.`, neutral: false };
+    if (sentLead && !engLead)
+      return { text: `${sentLead} videos score better on audience sentiment; engagement is similar between both groups.`, neutral: false };
+    if (!sentLead && engLead)
+      return { text: `${engLead} videos drive higher engagement; audience sentiment is similar between both groups.`, neutral: false };
+    return { text: `Sponsored videos lead on ${sentLead === 'Sponsored' ? 'sentiment' : 'engagement'} while organic videos lead on ${sentLead !== 'Sponsored' ? 'sentiment' : 'engagement'}.`, neutral: false };
+  }
 
   function showError(msg) {
     document.getElementById('errorText').textContent = msg;
@@ -541,7 +541,8 @@
 
     const months      = parseInt(document.getElementById('months').value)      || 6;
     const maxVideos   = parseInt(document.getElementById('maxVideos').value)   || 15;
-    const maxComments = parseInt(document.getElementById('maxComments').value) || 500;
+    const allComments = document.getElementById('allComments').checked;
+    const maxComments = allComments ? 10000 : (parseInt(document.getElementById('maxComments').value) || 100);
     const translate   = document.getElementById('translate').checked;
 
     clearError();
@@ -606,6 +607,32 @@
     document.getElementById('channelName').textContent = r.channel_name || r.channel_id;
     document.getElementById('resultsSection').classList.remove('hidden');
 
+    // Verdict
+    const verdict = generateVerdict(r);
+    const verdictBox  = document.getElementById('verdictBox');
+    const verdictText = document.getElementById('verdictText');
+    verdictBox.classList.remove('hidden', 'neutral');
+    if (verdict.neutral) verdictBox.classList.add('neutral');
+    verdictText.innerHTML = verdict.text;
+    document.getElementById('verdictBox').querySelector('.verdict-icon').textContent = verdict.neutral ? 'ℹ' : '★';
+
+    // Zero-video notice
+    const zeroNotice = document.getElementById('zeroNotice');
+    const sp = r.num_sponsored, un = r.num_unsponsored;
+    if (sp === 0 || un === 0) {
+      zeroNotice.classList.remove('hidden');
+      const missing = sp === 0 ? 'sponsored' : 'organic';
+      const found   = sp === 0 ? un : sp;
+      const other   = sp === 0 ? 'organic' : 'sponsored';
+      zeroNotice.innerHTML =
+        `<strong>No ${missing} videos detected</strong>` +
+        `Found ${found} ${other} video${found !== 1 ? 's' : ''}, but none were identified as ${missing}. ` +
+        `Try a longer analysis period or a channel that discloses sponsorships in descriptions.`;
+    } else {
+      zeroNotice.classList.add('hidden');
+    }
+
+    // Table
     const tbody = document.getElementById('resultsBody');
     tbody.innerHTML = '';
 

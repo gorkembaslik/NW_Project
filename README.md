@@ -1,62 +1,55 @@
+---
+title: YouTube Partnership Analyzer
+emoji: 📊
+colorFrom: red
+colorTo: blue
+sdk: docker
+pinned: false
+---
+
 # YouTube Partnership Analyzer
-A desktop application that analyzes YouTube channels to evaluate and compare sponsored vs. non-sponsored content performance.
 
-## Features
-- Analyzes channel content over a specified time period
-- Compares sponsored and organic content metrics
-- Measures engagement rates and sentiment analysis
-- Provides detailed metrics per video type:
-  - Views, likes, and comments
-  - Sentiment scores
-  - Engagement rates
-  - Comment sentiment distribution
+Ever wondered whether sponsorships actually hurt a YouTuber's relationship with their audience? This tool answers that. Paste in a channel URL and it pulls their recent videos, separates the sponsored ones from the organic ones, and compares how each group performs — in terms of both audience sentiment and engagement.
 
-## Requirements
-- Python 3.x
-- PySide6
-- Google API Python client
-- NLTK
-- TextBlob
-- Other dependencies listed in requirements.txt
+Built as a partnership evaluation tool for Foreo, but it works for any YouTube channel.
 
-## Installation
-1. Clone the repository
-2. Install required packages:
+## What it does
+
+- Fetches a channel's recent videos (you control how far back and how many)
+- Detects sponsored videos using YouTube's own paid promotion API flag and description disclosures
+- Analyzes comment sentiment using a combination of VADER and TextBlob
+- Shows you a side-by-side comparison: sponsored vs. organic across sentiment, engagement rate, views, likes, and comments
+
+## How to run it locally
+
+You'll need a [YouTube Data API v3 key](https://console.developers.google.com/).
+
 ```bash
+git clone https://github.com/gorkembaslik/youtube-partnership-analyzer
+cd youtube-partnership-analyzer
 pip install -r requirements.txt
 ```
-3. Download NLTK data:
-```python
-import nltk
-nltk.download('vader_lexicon')
-nltk.download('punkt')
-nltk.download('stopwords')
+
+Create a `.env` file in the project root:
+```
+YOUTUBE_API_KEY=your_key_here
 ```
 
-## Usage
-1. Run the application:
+Then start the server:
 ```bash
-python Foreo_Estimator.py
+python -m uvicorn main:app --reload
 ```
-2. Enter the YouTube channel URL
-3. Specify the analysis period (months)
-4. Set maximum videos to analyze
-5. Click "Analyze Channel" to start the evaluation
 
-### P.S. For the desktop app
-Run:
-pyinstaller --onefile -w --icon=faviconForeo.ico --add-data "emoji.json;." --add-data "Foreo_Logo.png;." Foreo_Estimator.py
+Open `http://localhost:8000` in your browser.
 
-- Then the executable file will appear in the dist folder
+## Supported URL formats
 
-## Output
-The analyzer provides a comprehensive comparison table showing:
-- Sentiment scores
-- Engagement rates
-- Video counts
-- View, like, and comment statistics
-- Comment sentiment distribution
-- Per-video averages for all metrics
+Any of these work:
+- `https://www.youtube.com/@ChannelName`
+- `https://www.youtube.com/channel/UCxxxxxxx`
+- `https://www.youtube.com/c/ChannelName`
+- `https://www.youtube.com/ChannelName`
 
-## Note
-Try to avoid using public Wifi when running the program because googleapiclient may not work.
+## Tech stack
+
+FastAPI backend, plain HTML/JS frontend, deployed on Hugging Face Spaces via Docker. Sentiment scoring uses NLTK's VADER (60% weight) and TextBlob (40% weight). Sponsorship detection uses YouTube's `paidProductPlacementDetails` API field — no scraping needed.

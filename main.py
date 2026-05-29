@@ -3,7 +3,7 @@ import json
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse
 from sse_starlette.sse import EventSourceResponse
 
 load_dotenv()
@@ -16,52 +16,6 @@ async def root():
     with open("static/index.html", encoding="utf-8") as f:
         return f.read()
 
-
-@app.get("/cookie-status")
-async def cookie_status():
-    from analyzer import cookies_loaded
-    return {"loaded": cookies_loaded()}
-
-
-@app.get("/debug-sponsorship", response_class=PlainTextResponse)
-async def debug_sponsorship(video_id: str):
-    import requests
-    from analyzer import _BROWSER_HEADERS, _get_yt_cookies
-
-    lines = []
-    from analyzer import _get_yt_cookies, cookies_loaded
-    cookies = _get_yt_cookies()
-
-    if cookies:
-        names = [c.name for c in cookies]
-        lines += [
-            f"cookies.txt loaded: YES  ({len(names)} cookies)",
-            f"Session valid:      {cookies_loaded()}",
-            "",
-        ]
-    else:
-        lines += ["cookies.txt: NOT FOUND — place it in the project folder", ""]
-
-    try:
-        r = requests.get(
-            f"https://www.youtube.com/watch?v={video_id}",
-            headers=_BROWSER_HEADERS,
-            cookies=cookies,
-            timeout=10,
-        )
-        text = r.text
-        lines += [
-            f"HTTP status:                        {r.status_code}",
-            f"Response length:                    {len(text)} chars",
-            f"'ytp-paid-content-overlay-link':    {'YES' if 'ytp-paid-content-overlay-link' in text else 'NO'}",
-            f"'Includes paid promotion':          {'YES' if 'Includes paid promotion' in text else 'NO'}",
-            f"'ytp-paid-content-overlay':         {'YES' if 'ytp-paid-content-overlay' in text else 'NO'}",
-            f"'logged_in\":\"1':                   {'\"logged_in\":\"1\"' in text}",
-        ]
-    except Exception as e:
-        lines.append(f"Request failed: {e}")
-
-    return "\n".join(lines)
 
 
 @app.get("/analyze")

@@ -11,6 +11,7 @@ import numpy as np
 import requests
 import translators as ts
 from googleapiclient.discovery import build
+from googleapiclient.discovery_cache.base import Cache
 from googleapiclient.errors import HttpError
 from langdetect import detect, LangDetectException
 from nltk.corpus import stopwords
@@ -18,6 +19,21 @@ from nltk.sentiment import SentimentIntensityAnalyzer
 from textblob import TextBlob
 
 _lang_lock = threading.Lock()
+
+
+class _MemoryCache(Cache):
+    """Caches the YouTube API discovery document in memory so build() doesn't
+    make an HTTP round-trip on every call."""
+    _store: dict = {}
+
+    def get(self, url):
+        return self._store.get(url)
+
+    def set(self, url, content):
+        self._store[url] = content
+
+
+_cache = _MemoryCache()
 
 _BROWSER_HEADERS = {
     'User-Agent': (
@@ -154,7 +170,18 @@ def get_channel_id(url, youtube=None):
         except Exception:
             pass
 
-    # 4. Last resort: scrape the page
+    # 4. Vanity URL like youtube.com/channelname (no @, /c/, or /user/ prefix)
+    m = re.search(r'youtube\.com/([\w.-]+)$', url)
+    if m and youtube:
+        handle = m.group(1)
+        try:
+            resp = youtube.channels().list(part='id', forHandle=handle).execute()
+            if resp.get('items'):
+                return resp['items'][0]['id']
+        except Exception:
+            pass
+
+    # 5. Last resort: scrape the page
     try:
         response = requests.get(url, headers=_BROWSER_HEADERS, timeout=15)
         if response.status_code == 200:
@@ -269,13 +296,18 @@ def batch_get_video_metrics(youtube, video_ids):
     metrics = {}
     for i in range(0, len(video_ids), 50):
         chunk = video_ids[i:i + 50]
-        resp = youtube.videos().list(part="statistics", id=",".join(chunk)).execute()
+        resp = youtube.videos().list(
+            part="statistics,paidProductPlacementDetails",
+            id=",".join(chunk)
+        ).execute()
         for item in resp.get('items', []):
             stats = item['statistics']
+            ppd = item.get('paidProductPlacementDetails', {})
             metrics[item['id']] = {
                 'likes': int(stats.get('likeCount', 0)),
                 'views': int(stats.get('viewCount', 0)),
                 'comments': int(stats.get('commentCount', 0)),
+                'has_paid_placement': ppd.get('hasPaidProductPlacement', False),
             }
     return metrics
 
@@ -336,24 +368,15 @@ def _get_yt_cookies():
         return None
 
 
-def cookies_loaded():
-    jar = _get_yt_cookies()
-    if not jar:
-        return False
-    names = {c.name for c in jar}
-    return bool(names & {'SID', 'SAPISID', '__Secure-3PSID'})
-
 
 def check_sponsorship(video_id, description=''):
-    # Signal 1: description disclosure — no extra request needed
+    """Return the detection method string if sponsored, else None."""
     if description and _SPONSOR_RE.search(description):
-        return True
+        return 'description'
 
-    # Signal 2: fetch with session cookies so YouTube returns the
-    # logged-in page which includes ytp-paid-content-overlay-link
     cookies = _get_yt_cookies()
     if not cookies:
-        return False
+        return None
 
     try:
         response = requests.get(
@@ -364,28 +387,33 @@ def check_sponsorship(video_id, description=''):
         )
         response.raise_for_status()
         if 'Includes paid promotion' in response.text:
-            return True
+            return 'cookies'
     except Exception:
         pass
 
-    return False
+    return None
 
 
 def _process_video(api_key, video, metrics_dict, analyzer, max_comments, translate):
-    youtube = build('youtube', 'v3', developerKey=api_key)
+    youtube = build('youtube', 'v3', developerKey=api_key, cache=_cache)
     video_id = video['video_id']
 
     comments = get_video_comments(youtube, video_id, max_comments)
     if comments is None:
         return None
 
-    stats = metrics_dict.get(video_id, {'likes': 0, 'views': 0, 'comments': 0})
+    stats = metrics_dict.get(video_id, {'likes': 0, 'views': 0, 'comments': 0, 'has_paid_placement': False})
     sentiment_score, sentiment_counts = analyzer.analyze_sentiment(comments, translate=translate)
-    is_sponsored = check_sponsorship(video_id, description=video.get('description', ''))
+
+    if stats.get('has_paid_placement', False):
+        sponsored_reason = 'api'
+    else:
+        sponsored_reason = check_sponsorship(video_id, description=video.get('description', ''))
 
     return {
         'video': video,
-        'is_sponsored': is_sponsored,
+        'is_sponsored': sponsored_reason is not None,
+        'sponsored_reason': sponsored_reason,
         'likes': stats['likes'],
         'views': stats['views'],
         'comments_count': stats['comments'],
@@ -404,7 +432,7 @@ def evaluate_channel(channel_url, months=6, max_videos=15, max_comments=500, tra
     if not api_key:
         raise ValueError("YOUTUBE_API_KEY not set in environment")
 
-    youtube = build('youtube', 'v3', developerKey=api_key)
+    youtube = build('youtube', 'v3', developerKey=api_key, cache=_cache)
     analyzer = EnhancedSentimentAnalyzer()
 
     emit("Extracting channel ID...")
@@ -436,7 +464,7 @@ def evaluate_channel(channel_url, months=6, max_videos=15, max_comments=500, tra
     un_videos = []
 
     completed = 0
-    with ThreadPoolExecutor(max_workers=5) as pool:
+    with ThreadPoolExecutor(max_workers=min(len(videos), 10)) as pool:
         future_to_video = {
             pool.submit(_process_video, api_key, video, metrics_dict, analyzer, max_comments, translate): video
             for video in videos
@@ -456,6 +484,8 @@ def evaluate_channel(channel_url, months=6, max_videos=15, max_comments=500, tra
                 continue
 
             if result['is_sponsored']:
+                reason_labels = {'api': 'YouTube API flag', 'description': 'description keyword', 'cookies': 'cookie scrape'}
+                emit(f"  → Sponsored ({reason_labels.get(result['sponsored_reason'], result['sponsored_reason'])}): {result['video']['video_title'][:50]}")
                 sponsored_sentiments.append(result['sentiment_score'])
                 sp_videos.append(result['video'])
                 sp['likes'] += result['likes']
